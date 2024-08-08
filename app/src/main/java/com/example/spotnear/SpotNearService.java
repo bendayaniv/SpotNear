@@ -142,7 +142,7 @@ public class SpotNearService extends Service {
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(title)
                 .setContentText(content)
-                .setSmallIcon(R.drawable.ic_notification)
+                .setSmallIcon(R.drawable.notification)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .build();
 
