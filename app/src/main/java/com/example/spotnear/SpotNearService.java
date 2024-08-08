@@ -33,10 +33,13 @@ public class SpotNearService extends Service {
     private static final String CHANNEL_ID = "SpotNearChannel";
     private static final int NOTIFICATION_ID = 1;
     public static final String ACTION_UPDATE_LOCATION = "com.example.spotnear.UPDATE_LOCATION";
+    public static final String ACTION_STOP_SERVICE = "com.example.spotnear.STOP_SERVICE";
     private static final String TAG = "SpotNearService";
 
     private NotificationManager notificationManager;
     private OkHttpClient client;
+    private AlarmManager alarmManager;
+    private PendingIntent alarmPendingIntent;
 
     // Test mode flag and interval
     private static final boolean TEST_MODE = true;
@@ -47,6 +50,7 @@ public class SpotNearService extends Service {
         super.onCreate();
         Log.d(TAG, "SpotNearService onCreate");
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         createNotificationChannel();
         client = new OkHttpClient();
         scheduleNextUpdates();
@@ -55,45 +59,50 @@ public class SpotNearService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "SpotNearService onStartCommand");
-        if (intent != null && ACTION_UPDATE_LOCATION.equals(intent.getAction())) {
-            double latitude = intent.getDoubleExtra("latitude", 0);
-            double longitude = intent.getDoubleExtra("longitude", 0);
-            Log.d(TAG, "Received location update: Lat " + latitude + ", Lon " + longitude);
-            findNearbyPOI(latitude, longitude);
+        if (intent != null) {
+            String action = intent.getAction();
+            if (ACTION_UPDATE_LOCATION.equals(action)) {
+                double latitude = intent.getDoubleExtra("latitude", 0);
+                double longitude = intent.getDoubleExtra("longitude", 0);
+                Log.d(TAG, "Received location update: Lat " + latitude + ", Lon " + longitude);
+                findNearbyPOI(latitude, longitude);
+            } else if (ACTION_STOP_SERVICE.equals(action)) {
+                Log.d(TAG, "Received stop service command");
+                stopSelf();
+                return START_NOT_STICKY;
+            }
         }
         return START_STICKY;
     }
 
     private void scheduleNextUpdates() {
         if (TEST_MODE) {
-            Log.d(TAG, "Scheduling test mode updates every 2 minutes");
+            Log.d(TAG, "Scheduling test mode updates every 0.5 minutes");
             scheduleTestUpdate();
         } else {
             Log.d(TAG, "Scheduling regular updates");
-            AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-            scheduleUpdate(alarmManager, 9, 0);
-            scheduleUpdate(alarmManager, 14, 0);
-            scheduleUpdate(alarmManager, 19, 0);
+            scheduleUpdate(9, 0);
+            scheduleUpdate(14, 0);
+            scheduleUpdate(19, 0);
         }
     }
 
     private void scheduleTestUpdate() {
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(this, SpotNearService.class);
         intent.setAction(ACTION_UPDATE_LOCATION);
-        PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        alarmPendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         long nextUpdateTime = System.currentTimeMillis() + TEST_INTERVAL;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextUpdateTime, pendingIntent);
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextUpdateTime, alarmPendingIntent);
         } else {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextUpdateTime, pendingIntent);
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextUpdateTime, alarmPendingIntent);
         }
-        Log.d(TAG, "Scheduled next test update in 2 minutes");
+        Log.d(TAG, "Scheduled next test update in 0.5 minutes");
     }
 
-    private void scheduleUpdate(AlarmManager alarmManager, int hourOfDay, int minute) {
+    private void scheduleUpdate(int hourOfDay, int minute) {
         Intent intent = new Intent(this, SpotNearService.class);
         intent.setAction(ACTION_UPDATE_LOCATION);
         PendingIntent pendingIntent = PendingIntent.getService(this, hourOfDay, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -187,6 +196,15 @@ public class SpotNearService extends Service {
 
         notificationManager.notify(NOTIFICATION_ID, notification);
         Log.d(TAG, "Notification sent: " + title + " - " + content);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.d(TAG, "SpotNearService onDestroy");
+        if (alarmManager != null && alarmPendingIntent != null) {
+            alarmManager.cancel(alarmPendingIntent);
+        }
     }
 
     @Override

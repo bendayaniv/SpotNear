@@ -20,6 +20,9 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private TextView locationText;
     private MyLocation myLocation;
+    private Button startServiceButton;
+    private Button stopServiceButton;
+    private boolean isServiceRunning = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,11 +31,15 @@ public class MainActivity extends AppCompatActivity {
 
         locationText = findViewById(R.id.locationText);
         Button updateLocationButton = findViewById(R.id.updateLocationButton);
+        startServiceButton = findViewById(R.id.startServiceButton);
+        stopServiceButton = findViewById(R.id.stopServiceButton);
 
         myLocation = MyLocation.getInstance();
         myLocation.initializeApp(getApplication(), true);
 
         updateLocationButton.setOnClickListener(v -> requestLocationUpdate());
+        startServiceButton.setOnClickListener(v -> startSpotNearService());
+        stopServiceButton.setOnClickListener(v -> stopSpotNearService());
 
         // Check for SCHEDULE_EXACT_ALARM permission
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -43,15 +50,14 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // Start the SpotNear service
-        startService(new Intent(this, SpotNearService.class));
+        updateButtonStates();
 
         // Schedule periodic location updates for testing
         schedulePeriodicLocationUpdates();
     }
 
     private void schedulePeriodicLocationUpdates() {
-        // Schedule a location update every 2 minutes for testing
+        // Schedule a location update every 0.5 minutes for testing
         new android.os.Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -61,6 +67,29 @@ public class MainActivity extends AppCompatActivity {
         }, 30 * 1000); // 0.5 minute
     }
 
+    private void startSpotNearService() {
+        Intent intent = new Intent(this, SpotNearService.class);
+        intent.setAction(SpotNearService.ACTION_UPDATE_LOCATION);
+        startService(intent);
+        isServiceRunning = true;
+        updateButtonStates();
+        Log.d(TAG, "SpotNear service started");
+    }
+
+    private void stopSpotNearService() {
+        Intent intent = new Intent(this, SpotNearService.class);
+        intent.setAction(SpotNearService.ACTION_STOP_SERVICE);
+        startService(intent);
+        isServiceRunning = false;
+        updateButtonStates();
+        Log.d(TAG, "SpotNear service stopped");
+    }
+
+    private void updateButtonStates() {
+        startServiceButton.setEnabled(!isServiceRunning);
+        stopServiceButton.setEnabled(isServiceRunning);
+    }
+
     private void requestLocationUpdate() {
         Log.d(TAG, "Requesting location update");
         myLocation.checkLocationAndRequestUpdates(this, (latitude, longitude) -> {
@@ -68,12 +97,14 @@ public class MainActivity extends AppCompatActivity {
             locationText.setText(locationStr);
             Log.d(TAG, "Location updated: " + locationStr);
 
-            // Send location to the service
-            Intent intent = new Intent(this, SpotNearService.class);
-            intent.setAction(SpotNearService.ACTION_UPDATE_LOCATION);
-            intent.putExtra("latitude", latitude);
-            intent.putExtra("longitude", longitude);
-            startService(intent);
+            if (isServiceRunning) {
+                // Send location to the service
+                Intent intent = new Intent(this, SpotNearService.class);
+                intent.setAction(SpotNearService.ACTION_UPDATE_LOCATION);
+                intent.putExtra("latitude", latitude);
+                intent.putExtra("longitude", longitude);
+                startService(intent);
+            }
         });
     }
 
