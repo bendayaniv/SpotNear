@@ -132,8 +132,14 @@ public class SpotNearService extends Service {
     private void findNearbyPOI(double latitude, double longitude) {
         Log.d(TAG, "Finding nearby POI for Lat " + latitude + ", Lon " + longitude);
         String query = "[out:json];(" +
-                "node[\"amenity\"](around:1000," + latitude + "," + longitude + ");" +
-                "way[\"amenity\"](around:1000," + latitude + "," + longitude + ");" +
+                "node[\"leisure\"=\"park\"](around:1000," + latitude + "," + longitude + ");" +
+                "node[\"amenity\"=\"cafe\"](around:1000," + latitude + "," + longitude + ");" +
+                "node[\"amenity\"=\"restaurant\"](around:1000," + latitude + "," + longitude + ");" +
+                "node[\"tourism\"](around:1000," + latitude + "," + longitude + ");" +
+                "way[\"leisure\"=\"park\"](around:1000," + latitude + "," + longitude + ");" +
+                "way[\"amenity\"=\"cafe\"](around:1000," + latitude + "," + longitude + ");" +
+                "way[\"amenity\"=\"restaurant\"](around:1000," + latitude + "," + longitude + ");" +
+                "way[\"tourism\"](around:1000," + latitude + "," + longitude + ");" +
                 ");out center;";
 
         String url = "https://overpass-api.de/api/interpreter?data=" + URLEncoder.encode(query);
@@ -167,7 +173,7 @@ public class SpotNearService extends Service {
                 int randomIndex = (int) (Math.random() * elements.length());
                 JSONObject poi = elements.getJSONObject(randomIndex);
                 String name = poi.has("tags") ? poi.getJSONObject("tags").optString("name", "Interesting place") : "Interesting place";
-                String type = poi.has("tags") ? poi.getJSONObject("tags").optString("amenity", "place") : "place";
+                String type = getPoiType(poi);
 
                 Log.d(TAG, "Selected POI: " + name + " (" + type + ")");
                 sendNotification("Spot Near: " + name, "There's a " + type + " near you. Why not check it out?");
@@ -177,6 +183,22 @@ public class SpotNearService extends Service {
         } catch (JSONException e) {
             Log.e(TAG, "Error parsing POI data", e);
         }
+    }
+
+    private String getPoiType(JSONObject poi) {
+        try {
+            JSONObject tags = poi.getJSONObject("tags");
+            if (tags.has("leisure") && "park".equals(tags.getString("leisure"))) {
+                return "park";
+            } else if (tags.has("amenity")) {
+                return tags.getString("amenity");
+            } else if (tags.has("tourism")) {
+                return tags.getString("tourism");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error getting POI type", e);
+        }
+        return "interesting place";
     }
 
     private void createNotificationChannel() {
