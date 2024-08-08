@@ -38,9 +38,14 @@ public class SpotNearService extends Service {
     private NotificationManager notificationManager;
     private OkHttpClient client;
 
+    // Test mode flag and interval
+    private static final boolean TEST_MODE = true;
+    private static final long TEST_INTERVAL = 30 * 1000; // 0.5 minute
+
     @Override
     public void onCreate() {
         super.onCreate();
+        Log.d(TAG, "SpotNearService onCreate");
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         createNotificationChannel();
         client = new OkHttpClient();
@@ -49,21 +54,43 @@ public class SpotNearService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d(TAG, "SpotNearService onStartCommand");
         if (intent != null && ACTION_UPDATE_LOCATION.equals(intent.getAction())) {
             double latitude = intent.getDoubleExtra("latitude", 0);
             double longitude = intent.getDoubleExtra("longitude", 0);
+            Log.d(TAG, "Received location update: Lat " + latitude + ", Lon " + longitude);
             findNearbyPOI(latitude, longitude);
         }
         return START_STICKY;
     }
 
     private void scheduleNextUpdates() {
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        if (TEST_MODE) {
+            Log.d(TAG, "Scheduling test mode updates every 2 minutes");
+            scheduleTestUpdate();
+        } else {
+            Log.d(TAG, "Scheduling regular updates");
+            AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            scheduleUpdate(alarmManager, 9, 0);
+            scheduleUpdate(alarmManager, 14, 0);
+            scheduleUpdate(alarmManager, 19, 0);
+        }
+    }
 
-        // Schedule three updates: at 9 AM, 2 PM, and 7 PM
-        scheduleUpdate(alarmManager, 9, 0);
-        scheduleUpdate(alarmManager, 14, 0);
-        scheduleUpdate(alarmManager, 19, 0);
+    private void scheduleTestUpdate() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, SpotNearService.class);
+        intent.setAction(ACTION_UPDATE_LOCATION);
+        PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        long nextUpdateTime = System.currentTimeMillis() + TEST_INTERVAL;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextUpdateTime, pendingIntent);
+        } else {
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextUpdateTime, pendingIntent);
+        }
+        Log.d(TAG, "Scheduled next test update in 2 minutes");
     }
 
     private void scheduleUpdate(AlarmManager alarmManager, int hourOfDay, int minute) {
@@ -83,7 +110,6 @@ public class SpotNearService extends Service {
             if (alarmManager.canScheduleExactAlarms()) {
                 alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
             } else {
-                // Fall back to inexact alarm
                 alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
                 Log.w(TAG, "Exact alarm permission not granted. Using inexact alarm.");
             }
@@ -95,6 +121,7 @@ public class SpotNearService extends Service {
     }
 
     private void findNearbyPOI(double latitude, double longitude) {
+        Log.d(TAG, "Finding nearby POI for Lat " + latitude + ", Lon " + longitude);
         String query = "[out:json];(" +
                 "node[\"amenity\"](around:1000," + latitude + "," + longitude + ");" +
                 "way[\"amenity\"](around:1000," + latitude + "," + longitude + ");" +
@@ -116,6 +143,7 @@ public class SpotNearService extends Service {
             public void onResponse(Call call, Response response) throws IOException {
                 if (response.isSuccessful()) {
                     String jsonData = response.body().string();
+                    Log.d(TAG, "Received POI data: " + jsonData);
                     parseAndNotify(jsonData);
                 }
             }
@@ -132,7 +160,10 @@ public class SpotNearService extends Service {
                 String name = poi.has("tags") ? poi.getJSONObject("tags").optString("name", "Interesting place") : "Interesting place";
                 String type = poi.has("tags") ? poi.getJSONObject("tags").optString("amenity", "place") : "place";
 
+                Log.d(TAG, "Selected POI: " + name + " (" + type + ")");
                 sendNotification("Spot Near: " + name, "There's a " + type + " near you. Why not check it out?");
+            } else {
+                Log.d(TAG, "No POIs found in the area");
             }
         } catch (JSONException e) {
             Log.e(TAG, "Error parsing POI data", e);
@@ -155,6 +186,7 @@ public class SpotNearService extends Service {
                 .build();
 
         notificationManager.notify(NOTIFICATION_ID, notification);
+        Log.d(TAG, "Notification sent: " + title + " - " + content);
     }
 
     @Override

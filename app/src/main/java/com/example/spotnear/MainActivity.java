@@ -8,7 +8,7 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -17,6 +17,7 @@ import com.example.locationlibrary.MyLocation;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "MainActivity";
     private TextView locationText;
     private MyLocation myLocation;
 
@@ -44,12 +45,28 @@ public class MainActivity extends AppCompatActivity {
 
         // Start the SpotNear service
         startService(new Intent(this, SpotNearService.class));
+
+        // Schedule periodic location updates for testing
+        schedulePeriodicLocationUpdates();
+    }
+
+    private void schedulePeriodicLocationUpdates() {
+        // Schedule a location update every 2 minutes for testing
+        new android.os.Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                requestLocationUpdate();
+                schedulePeriodicLocationUpdates();
+            }
+        }, 30 * 1000); // 0.5 minute
     }
 
     private void requestLocationUpdate() {
+        Log.d(TAG, "Requesting location update");
         myLocation.checkLocationAndRequestUpdates(this, (latitude, longitude) -> {
             String locationStr = "Lat: " + latitude + ", Lon: " + longitude;
             locationText.setText(locationStr);
+            Log.d(TAG, "Location updated: " + locationStr);
 
             // Send location to the service
             Intent intent = new Intent(this, SpotNearService.class);
