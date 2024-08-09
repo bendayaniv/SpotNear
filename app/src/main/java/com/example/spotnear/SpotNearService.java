@@ -87,7 +87,9 @@ public class SpotNearService extends Service {
         Log.d(TAG, "SpotNearService onStartCommand");
         if (intent != null) {
             String action = intent.getAction();
-            if (ACTION_START_SERVICE.equals(action)) {
+            if (ACTION_NOTIFICATION_CLICKED.equals(action)) {
+                handleNotificationClick(); // This will now also cancel the notification
+            } else if (ACTION_START_SERVICE.equals(action)) {
                 startForeground(FOREGROUND_SERVICE_ID, createForegroundNotification());
                 isSearching = true;
                 scheduleAlarm();
@@ -102,9 +104,10 @@ public class SpotNearService extends Service {
                 } else {
                     scheduleAlarm();
                 }
-            } else if (ACTION_NOTIFICATION_CLICKED.equals(action)) {
-                handleNotificationClick();
             }
+//            else if (ACTION_NOTIFICATION_CLICKED.equals(action)) {
+//                handleNotificationClick();
+//            }
         } else {
             // Service was restarted by the system
             startForeground(FOREGROUND_SERVICE_ID, createForegroundNotification());
@@ -248,14 +251,20 @@ public class SpotNearService extends Service {
 
     private void handleNotificationClick() {
         Log.d(TAG, "Notification clicked");
+
+        // Start MainActivity
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.setAction(ACTION_NOTIFICATION_CLICKED);
         startActivity(intent);
 
+        // Cancel the notification to remove it from the tray
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.cancel(FOREGROUND_SERVICE_ID);
+
         // Reset the search state
         isSearching = true;
-        preferencesManager.clearPlaceDetails();
+        // preferencesManager.clearPlaceDetails();
 
         // Update notification to show we're searching again
         updateForegroundNotification();
