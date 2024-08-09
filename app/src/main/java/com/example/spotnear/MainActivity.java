@@ -34,6 +34,8 @@ public class MainActivity extends AppCompatActivity {
     private Button stopServiceButton;
     private boolean isServiceRunning = false;
 
+    private PreferencesManager preferencesManager;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -61,6 +63,8 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        preferencesManager = new PreferencesManager(this);
+
         // Check if service is already running
         isServiceRunning = getServiceRunningState();
         updateButtonStates();
@@ -70,43 +74,55 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Handle place details if sent from notification click
-        handlePlaceDetails(getIntent());
+        handleIntent(getIntent());
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         Log.d(TAG, "onNewIntent called");
-        handlePlaceDetails(intent);
+        handleIntent(intent);
     }
 
-    private void handlePlaceDetails(Intent intent) {
-        Log.d(TAG, "handlePlaceDetails called");
-        if (intent != null && intent.hasExtra("placeDetails")) {
-            Log.d(TAG, "Received place details from notification");
-            String placeDetailsJson = intent.getStringExtra("placeDetails");
-            try {
-                JSONObject placeDetails = new JSONObject(placeDetailsJson);
-                displayPlaceDetails(placeDetails);
-            } catch (JSONException e) {
-                Log.e(TAG, "Error parsing place details", e);
-            }
-        } else {
-            Log.d(TAG, "No place details in intent");
+//    private void handlePlaceDetails(Intent intent) {
+//        Log.d(TAG, "handlePlaceDetails called");
+//        if (intent != null && intent.hasExtra("placeDetails")) {
+//            Log.d(TAG, "Received place details from notification");
+//            String placeDetailsJson = intent.getStringExtra("placeDetails");
+//            try {
+//                JSONObject placeDetails = new JSONObject(placeDetailsJson);
+//                displayPlaceDetails(placeDetails);
+//            } catch (JSONException e) {
+//                Log.e(TAG, "Error parsing place details", e);
+//            }
+//        } else {
+//            Log.d(TAG, "No place details in intent");
+//        }
+//    }
+
+    private void handleIntent(Intent intent) {
+        if (intent != null && SpotNearService.ACTION_NOTIFICATION_CLICKED.equals(intent.getAction())) {
+            Log.d(TAG, "Notification clicked intent received");
+            displayPlaceDetails();
         }
     }
 
-    private void displayPlaceDetails(JSONObject placeDetails) {
-        try {
-            Log.d(TAG, "Displaying place details: " + placeDetails.toString(2));
-            JSONObject tags = placeDetails.getJSONObject("tags");
-            String name = tags.optString("name", "Unnamed Place");
-            String type = getPoiType(placeDetails);
-            String details = "Name: " + name + "\nType: " + type;
-            placeDetailsText.setText(details);
-        } catch (JSONException e) {
-            Log.e(TAG, "Error displaying place details", e);
-            placeDetailsText.setText("Error displaying place details");
+    private void displayPlaceDetails() {
+        JSONObject placeDetails = preferencesManager.getPlaceDetails();
+        if (placeDetails != null) {
+            try {
+                Log.d(TAG, "Displaying place details: " + placeDetails.toString(2));
+                JSONObject tags = placeDetails.getJSONObject("tags");
+                String name = tags.optString("name", "Unnamed Place");
+                String type = getPoiType(placeDetails);
+                String details = "Name: " + name + "\nType: " + type;
+                placeDetailsText.setText(details);
+            } catch (JSONException e) {
+                Log.e(TAG, "Error displaying place details", e);
+                placeDetailsText.setText("Error displaying place details");
+            }
+        } else {
+            placeDetailsText.setText("No place details available");
         }
     }
 
@@ -137,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
         intent.setAction(SpotNearService.ACTION_START_SERVICE);
         ContextCompat.startForegroundService(this, intent);
         isServiceRunning = true;
-        setServiceRunningState(true);
+        preferencesManager.setServiceRunningState(true);
         updateButtonStates();
         Log.d(TAG, "SpotNear service started");
     }
@@ -147,7 +163,8 @@ public class MainActivity extends AppCompatActivity {
         intent.setAction(SpotNearService.ACTION_STOP_SERVICE);
         startService(intent);
         isServiceRunning = false;
-        setServiceRunningState(false);
+        preferencesManager.setServiceRunningState(false);
+        preferencesManager.clearPlaceDetails();
         updateButtonStates();
         Log.d(TAG, "SpotNear service stopped");
     }
