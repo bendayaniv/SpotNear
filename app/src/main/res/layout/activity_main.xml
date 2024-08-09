@@ -13,13 +13,6 @@
         android:layout_marginBottom="16dp"/>
 
     <Button
-        android:id="@+id/updateLocationButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Update Location"
-        android:layout_marginBottom="16dp"/>
-
-    <Button
         android:id="@+id/startServiceButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

@@ -43,15 +43,13 @@ public class MainActivity extends AppCompatActivity {
 
         locationText = findViewById(R.id.locationText);
         placeDetailsText = findViewById(R.id.placeDetailsText);
-        Button updateLocationButton = findViewById(R.id.updateLocationButton);
         startServiceButton = findViewById(R.id.startServiceButton);
         stopServiceButton = findViewById(R.id.stopServiceButton);
 
         myLocation = MyLocation.getInstance();
         myLocation.initializeApp(getApplication(), true);
 
-        updateLocationButton.setOnClickListener(v -> requestLocationUpdate());
-        startServiceButton.setOnClickListener(v -> startSpotNearService());
+        startServiceButton.setOnClickListener(v -> requestLocationUpdate());
         stopServiceButton.setOnClickListener(v -> stopSpotNearService());
 
         // Check for SCHEDULE_EXACT_ALARM permission
@@ -180,6 +178,8 @@ public class MainActivity extends AppCompatActivity {
             String locationStr = "Lat: " + latitude + ", Lon: " + longitude;
             locationText.setText(locationStr);
             Log.d(TAG, "Location updated: " + locationStr);
+
+            startSpotNearService();
         });
     }
 
