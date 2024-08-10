@@ -64,8 +64,8 @@ public class SpotNearService extends Service {
     private JSONObject lastFoundPlace = null;
 
     // Test mode flag and interval
-    private static final boolean TEST_MODE = false;
-    private static final long TEST_INTERVAL = 5 * 1000; // 5 seconds
+    private static final boolean TEST_MODE = true;
+    private static final long TEST_INTERVAL = 10 * 1000; // 5 seconds
     private static final long NORMAL_INTERVAL = AlarmManager.INTERVAL_HOUR; // 1 hour
 
     private boolean hasFoundPlace = false;

@@ -107,11 +107,9 @@ public class MainActivity extends AppCompatActivity {
                 displayPlaceDetails();
             } else if (SpotNearService.ACTION_SEARCH_NOTIFICATION_CLICKED.equals(action)) {
                 Log.d(TAG, "Search notification clicked intent received");
-                // Ensure the service is running and searching
                 if (!isServiceRunning(SpotNearService.class)) {
                     startSpotNearService();
                 } else {
-                    // If the service is already running, send a broadcast to trigger a new search
                     Intent searchIntent = new Intent(SpotNearService.ACTION_SEARCH_NOTIFICATION_CLICKED);
                     sendBroadcast(searchIntent);
                 }
@@ -131,7 +129,13 @@ public class MainActivity extends AppCompatActivity {
                 String longitude = placeDetails.getString("lon");
                 String details = "Name: " + name + "\nType: " + type + "\nLatitude: " + latitude + "\nLongitude: " + longitude;
 
-                mapFragment.zoom(Double.parseDouble(latitude), Double.parseDouble(longitude));
+                // Ensure the map fragment is ready before zooming
+                if (mapFragment != null && mapFragment.isMapReady()) {
+                    mapFragment.zoom(Double.parseDouble(latitude), Double.parseDouble(longitude));
+                } else {
+                    // If the map is not ready, set a flag to zoom when it's ready
+                    mapFragment.setInitialLocation(Double.parseDouble(latitude), Double.parseDouble(longitude));
+                }
 
                 placeDetailsText.setText(details);
             } catch (JSONException e) {

@@ -25,6 +25,8 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     GoogleMap mMap;
     private double latitude;
     private double longitude;
+    private boolean mapReady = false;
+    private LatLng initialLocation = null;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -55,6 +57,11 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     }
 
     public void zoom(double _latitude, double _longitude) {
+        if (!mapReady) {
+            initialLocation = new LatLng(_latitude, _longitude);
+            return;
+        }
+
         mMap.clear();
 
         setLatitude(_latitude);
@@ -78,15 +85,20 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     public void refreshMap() {
         mMap.clear();
         // zoom();
-
     }
 
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mMap = googleMap;
+        mapReady = true;
         initiateMap();
 
-        refreshMap();
+        if (initialLocation != null) {
+            zoom(initialLocation.latitude, initialLocation.longitude);
+            initialLocation = null;
+        } else {
+            refreshMap();
+        }
     }
 
     private void initiateMap() {
@@ -96,11 +108,18 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         mMap.getUiSettings().setAllGesturesEnabled(true);
     }
 
+    public void setInitialLocation(double latitude, double longitude) {
+        this.initialLocation = new LatLng(latitude, longitude);
+    }
+
+    public boolean isMapReady() {
+        return mapReady;
+    }
+
     @Override
     public void onResume() {
         super.onResume();
     }
-
 
     @Override
     public void onPause() {
@@ -116,5 +135,4 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     public void onLowMemory() {
         super.onLowMemory();
     }
-
 }
