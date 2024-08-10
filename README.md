@@ -18,7 +18,7 @@ user when it finds something interesting.
 
 ## Video Demonstrations 🎥
 
-This video showcases the app's functionality in non-test mode:
+This video showcases the standard behavior and functionality of the SpotNear application:
 
 1. App launch and permission granting
 2. Starting the service
@@ -31,7 +31,7 @@ https://github.com/user-attachments/assets/e84c4d05-856e-45f2-97d8-feaa1f3ded81
 
 
 
-This video demonstrates the app's behavior, which is applicable to both test and non-test modes. For the purpose of this demonstration, test mode is used to showcase features more rapidly:
+This video demonstrates the functionality of the service when it automatically notifies about a nearby POI. It's shown in test mode to highlight the feature without long waiting times:
 
 1. App launch and service start
 2. Rapid POI discovery (every 5 seconds in test mode, 1 hour in non-test mode)
