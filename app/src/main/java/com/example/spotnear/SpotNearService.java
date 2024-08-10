@@ -136,13 +136,20 @@ public class SpotNearService extends Service {
 
         String contentText = isSearching ? "Discovering interesting places nearby" : "Click to search for new places";
 
-        return new NotificationCompat.Builder(this, CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("SpotNear is running")
                 .setContentText(contentText)
                 .setSmallIcon(R.drawable.notification)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
-                .build();
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE);
+        }
+
+        return builder.build();
     }
 
     private Notification createPlaceFoundNotification() {
@@ -371,7 +378,9 @@ public class SpotNearService extends Service {
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "SpotNear Notifications", NotificationManager.IMPORTANCE_DEFAULT);
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "SpotNear Notifications", NotificationManager.IMPORTANCE_LOW);
+            channel.setShowBadge(false);
+            channel.setSound(null, null);
             notificationManager.createNotificationChannel(channel);
         }
     }
