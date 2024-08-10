@@ -95,4 +95,41 @@ public class PreferencesManager {
     public int getPoiSearchRadius() {
         return prefs.getInt(PREF_POI_SEARCH_RADIUS, DEFAULT_SEARCH_RADIUS);
     }
+
+    /**
+     * Stores the last known location as a string in SharedPreferences.
+     *
+     * @param location A string representation of the location, typically in the format "Lat: X, Lon: Y"
+     */
+    public void setLastKnownLocation(String location) {
+        prefs.edit().putString("last_known_location", location).apply();
+    }
+
+    /**
+     * Retrieves the last known location from SharedPreferences.
+     *
+     * @return The last known location as a string, or null if no location has been stored
+     */
+    public String getLastKnownLocation() {
+        return prefs.getString("last_known_location", null);
+    }
+
+    /**
+     * Stores the timestamp of the last location update in SharedPreferences.
+     *
+     * @param time The timestamp of the last location update in milliseconds since epoch
+     */
+    public void setLastLocationUpdateTime(long time) {
+        prefs.edit().putLong("last_location_update_time", time).apply();
+    }
+
+    /**
+     * Retrieves the timestamp of the last location update from SharedPreferences.
+     *
+     * @return The timestamp of the last location update in milliseconds since epoch,
+     * or 0 if no update time has been stored
+     */
+    public long getLastLocationUpdateTime() {
+        return prefs.getLong("last_location_update_time", 0);
+    }
 }

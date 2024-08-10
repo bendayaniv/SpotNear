@@ -53,9 +53,6 @@ public class MainActivity extends AppCompatActivity {
         handleIntent(getIntent());
     }
 
-    /**
-     * Initialize view components
-     */
     private void initializeViews() {
         locationText = findViewById(R.id.locationText);
         placeDetailsText = findViewById(R.id.placeDetailsText);
@@ -70,17 +67,11 @@ public class MainActivity extends AppCompatActivity {
         searchRadiusInput.setText(String.valueOf(preferencesManager.getPoiSearchRadius()));
     }
 
-    /**
-     * Set up button click listeners
-     */
     private void setupListeners() {
         startServiceButton.setOnClickListener(v -> checkRadiusAndStartService());
         stopServiceButton.setOnClickListener(v -> stopSpotNearService());
     }
 
-    /**
-     * Check and request SCHEDULE_EXACT_ALARM permission for Android S and above
-     */
     private void checkAlarmPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
@@ -91,9 +82,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Set up the map fragment
-     */
     private void setupMapFragment() {
         mapFragment = new MapFragment();
         getSupportFragmentManager().beginTransaction()
@@ -101,20 +89,34 @@ public class MainActivity extends AppCompatActivity {
                 .commit();
     }
 
-    /**
-     * Update service running state and button states
-     */
     private void updateServiceState() {
         isServiceRunning = preferencesManager.getServiceRunningState();
         updateButtonStates();
-        if (isServiceRunning && !isServiceRunning(SpotNearService.class)) {
-            startSpotNearService();
+        if (isServiceRunning) {
+            if (!isServiceRunning(SpotNearService.class)) {
+                startSpotNearService(false);
+            } else {
+                updateLocationIfNeeded();
+            }
         }
     }
 
-    /**
-     * Check for existing place details and display them if available
-     */
+    private void updateLocationIfNeeded() {
+        if (isServiceRunning && checkPermissions()) {
+            long lastUpdateTime = preferencesManager.getLastLocationUpdateTime();
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastUpdateTime > 60000) { // Update if last update was more than 1 minute ago
+                requestLocationUpdate(false);
+            } else {
+                // Use the last known location
+                String lastKnownLocation = preferencesManager.getLastKnownLocation();
+                if (lastKnownLocation != null) {
+                    locationText.setText(lastKnownLocation);
+                }
+            }
+        }
+    }
+
     private void checkExistingPlaceDetails() {
         JSONObject existingPlaceDetails = preferencesManager.getPlaceDetails();
         if (existingPlaceDetails != null) {
@@ -129,9 +131,6 @@ public class MainActivity extends AppCompatActivity {
         handleIntent(intent);
     }
 
-    /**
-     * Handle incoming intents
-     */
     private void handleIntent(Intent intent) {
         if (intent != null) {
             String action = intent.getAction();
@@ -142,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
             } else if (SpotNearService.ACTION_SEARCH_NOTIFICATION_CLICKED.equals(action)) {
                 Log.d(TAG, "Search notification clicked intent received");
                 if (!isServiceRunning(SpotNearService.class)) {
-                    startSpotNearService();
+                    startSpotNearService(true);
                 } else {
                     Intent searchIntent = new Intent(SpotNearService.ACTION_SEARCH_NOTIFICATION_CLICKED);
                     sendBroadcast(searchIntent);
@@ -151,9 +150,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Display place details on the UI
-     */
     private void displayPlaceDetails() {
         JSONObject placeDetails = preferencesManager.getPlaceDetails();
         if (placeDetails != null) {
@@ -182,9 +178,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Get the type of Point of Interest (POI)
-     */
     private String getPoiType(JSONObject poi) throws JSONException {
         JSONObject tags = poi.getJSONObject("tags");
         if (tags.has("leisure") && "park".equals(tags.getString("leisure"))) {
@@ -204,24 +197,22 @@ public class MainActivity extends AppCompatActivity {
         isServiceRunning = isServiceRunning(SpotNearService.class);
         preferencesManager.setServiceRunningState(isServiceRunning);
         updateButtonStates();
+        updateLocationIfNeeded();
     }
 
-    /**
-     * Start the SpotNear service
-     */
-    private void startSpotNearService() {
+    private void startSpotNearService(boolean updateLocation) {
         Intent intent = new Intent(this, SpotNearService.class);
         intent.setAction(SpotNearService.ACTION_START_SERVICE);
         ContextCompat.startForegroundService(this, intent);
         isServiceRunning = true;
         preferencesManager.setServiceRunningState(true);
         updateButtonStates();
+        if (updateLocation) {
+            requestLocationUpdate(false);
+        }
         Log.d(TAG, "SpotNear service started");
     }
 
-    /**
-     * Stop the SpotNear service
-     */
     private void stopSpotNearService() {
         Intent intent = new Intent(this, SpotNearService.class);
         intent.setAction(SpotNearService.ACTION_STOP_SERVICE);
@@ -232,17 +223,11 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "SpotNear service stopped");
     }
 
-    /**
-     * Update the enabled/disabled state of buttons
-     */
     private void updateButtonStates() {
         startServiceButton.setEnabled(!isServiceRunning);
         stopServiceButton.setEnabled(isServiceRunning);
     }
 
-    /**
-     * Check if a service is running
-     */
     private boolean isServiceRunning(Class<?> serviceClass) {
         android.app.ActivityManager manager = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
         for (android.app.ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
@@ -253,20 +238,25 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
-    /**
-     * Check permissions and start the service
-     */
+    private void checkRadiusAndStartService() {
+        String radiusStr = searchRadiusInput.getText().toString();
+        if (!radiusStr.isEmpty()) {
+            int radius = Integer.parseInt(radiusStr);
+            preferencesManager.setPoiSearchRadius(radius);
+            checkPermissionsAndStartService();
+        } else {
+            Toast.makeText(this, "Please enter a search radius", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void checkPermissionsAndStartService() {
         if (checkPermissions()) {
-            requestLocationUpdate();
+            requestLocationUpdate(true);
         } else {
             requestPermissions();
         }
     }
 
-    /**
-     * Check if all required permissions are granted
-     */
     private boolean checkPermissions() {
         for (String permission : getRequiredPermissions()) {
             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
@@ -276,16 +266,10 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    /**
-     * Request required permissions
-     */
     private void requestPermissions() {
         ActivityCompat.requestPermissions(this, getRequiredPermissions(), PERMISSION_REQUEST_CODE);
     }
 
-    /**
-     * Get the array of required permissions based on Android version
-     */
     private String[] getRequiredPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             return new String[]{
@@ -301,20 +285,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Check the search radius input and start the service
-     */
-    private void checkRadiusAndStartService() {
-        String radiusStr = searchRadiusInput.getText().toString();
-        if (!radiusStr.isEmpty()) {
-            int radius = Integer.parseInt(radiusStr);
-            preferencesManager.setPoiSearchRadius(radius);
-            checkPermissionsAndStartService();
-        } else {
-            Toast.makeText(this, "Please enter a search radius", Toast.LENGTH_SHORT).show();
-        }
-    }
-
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -327,7 +297,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             if (allGranted) {
-                requestLocationUpdate();
+                requestLocationUpdate(true);
             } else {
                 Log.d(TAG, "Some permissions were not granted");
             }
@@ -335,17 +305,19 @@ public class MainActivity extends AppCompatActivity {
         myLocation.onRequestPermissionsResult(this, requestCode, permissions, grantResults);
     }
 
-    /**
-     * Request a location update
-     */
-    private void requestLocationUpdate() {
+    private void requestLocationUpdate(boolean startService) {
         Log.d(TAG, "Requesting location update");
         myLocation.checkLocationAndRequestUpdates(this, (latitude, longitude) -> {
             String locationStr = "Lat: " + latitude + ", Lon: " + longitude;
             locationText.setText(locationStr);
             Log.d(TAG, "Location updated: " + locationStr);
 
-            startSpotNearService();
+            preferencesManager.setLastKnownLocation(locationStr);
+            preferencesManager.setLastLocationUpdateTime(System.currentTimeMillis());
+
+            if (startService && !isServiceRunning) {
+                startSpotNearService(false);
+            }
         });
     }
 
