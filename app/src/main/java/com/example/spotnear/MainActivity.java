@@ -36,6 +36,8 @@ public class MainActivity extends AppCompatActivity {
 
     private PreferencesManager preferencesManager;
 
+    private MapFragment mapFragment;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -61,7 +63,14 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+
         preferencesManager = new PreferencesManager(this);
+
+        mapFragment = new MapFragment();
+
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.mainPageMapFragment, mapFragment)
+                .commit();
 
         // Check if service is already running
         isServiceRunning = getServiceRunningState();
@@ -113,7 +122,12 @@ public class MainActivity extends AppCompatActivity {
                 JSONObject tags = placeDetails.getJSONObject("tags");
                 String name = tags.optString("name", "Unnamed Place");
                 String type = getPoiType(placeDetails);
-                String details = "Name: " + name + "\nType: " + type;
+                String latitude = placeDetails.getString("lat");
+                String longitude = placeDetails.getString("lon");
+                String details = "Name: " + name + "\nType: " + type + "\nLatitude: " + latitude + "\nLongitude: " + longitude;
+
+                mapFragment.zoom(Double.parseDouble(latitude), Double.parseDouble(longitude));
+
                 placeDetailsText.setText(details);
             } catch (JSONException e) {
                 Log.e(TAG, "Error displaying place details", e);

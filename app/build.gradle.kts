@@ -1,5 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
+//    id("com.google.gms.google-services")
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
 }
 
 android {
@@ -37,6 +39,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+    implementation(libs.play.services.maps)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
@@ -46,4 +49,9 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.4.1")
     implementation("com.google.android.gms:play-services-location:18.0.0")
     implementation("com.squareup.okhttp3:okhttp:4.9.1")
+
+    // Fragment
+    val fragment_version = "1.6.1"
+    //noinspection GradleDependency
+    implementation("androidx.fragment:fragment:$fragment_version")
 }

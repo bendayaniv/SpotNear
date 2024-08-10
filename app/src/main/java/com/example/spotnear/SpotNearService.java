@@ -231,10 +231,14 @@ public class SpotNearService extends Service {
             if (elements.length() > 0) {
                 int randomIndex = (int) (Math.random() * elements.length());
                 JSONObject poi = elements.getJSONObject(randomIndex);
+
+                Log.d(TAG, "POI data: " + poi.toString());
+
                 String name = poi.has("tags") ? poi.getJSONObject("tags").optString("name", "Interesting place") : "Interesting place";
                 String type = getPoiType(poi);
+                String location = poi.has("lat") && poi.has("lon") ? poi.getDouble("lat") + ", " + poi.getDouble("lon") : "Unknown location";
 
-                Log.d(TAG, "Selected POI: " + name + " (" + type + ")");
+                Log.d(TAG, "Selected POI: " + name + " (" + type + "), " + location);
                 preferencesManager.savePlaceDetails(poi);
                 isSearching = false;
                 showPlaceFoundNotification();
