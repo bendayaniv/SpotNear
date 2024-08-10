@@ -11,6 +11,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.location.Location;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.util.Log;
@@ -70,6 +71,8 @@ public class SpotNearService extends Service {
     private boolean hasFoundPlace = false;
 
     private PreferencesManager preferencesManager;
+
+    private Handler handler = new Handler();
 
     @Override
     public void onCreate() {
@@ -185,6 +188,20 @@ public class SpotNearService extends Service {
             isSearching = false;
             updateSearchNotification();
         }
+        // Schedule the next automatic search
+        scheduleNextAutomaticSearch();
+    }
+
+    private void scheduleNextAutomaticSearch() {
+        long delay = TEST_MODE ? TEST_INTERVAL : NORMAL_INTERVAL;
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                isSearching = true;
+                updateSearchNotification();
+                requestLocationUpdate();
+            }
+        }, delay);
     }
 
     @SuppressLint("ScheduleExactAlarm")
@@ -289,12 +306,14 @@ public class SpotNearService extends Service {
 
                 isSearching = false;
                 updateSearchNotification();
+                // Schedule the next automatic search
+                scheduleNextAutomaticSearch();
             } else {
                 Log.d(TAG, "No POIs found in the area");
+                scheduleAlarm();
             }
         } catch (JSONException e) {
             Log.e(TAG, "Error parsing POI data", e);
-        } finally {
             scheduleAlarm();
         }
     }
@@ -371,6 +390,8 @@ public class SpotNearService extends Service {
         if (wakeLock != null && wakeLock.isHeld()) {
             wakeLock.release();
         }
+        // Remove any pending automatic search
+        handler.removeCallbacksAndMessages(null);
     }
 
     @Override
