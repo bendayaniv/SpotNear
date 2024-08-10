@@ -9,13 +9,14 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.location.Location;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.util.Log;
 
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -36,24 +37,22 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+/**
+ * Service for discovering nearby points of interest
+ */
 public class SpotNearService extends Service {
 
+    private static final String TAG = "SpotNearService";
     private static final String CHANNEL_ID = "SpotNearChannel";
-    private static final int NOTIFICATION_ID = 1;
     public static final String ACTION_SEARCH_NOTIFICATION_CLICKED = "com.example.spotnear.SEARCH_NOTIFICATION_CLICKED";
     public static final String ACTION_PLACE_NOTIFICATION_CLICKED = "com.example.spotnear.PLACE_NOTIFICATION_CLICKED";
-
-    private static final int FOREGROUND_SERVICE_ID = 1000;
-
-    private static final int SEARCH_NOTIFICATION_ID = 1001;
-    private static final int PLACE_NOTIFICATION_ID = 1002;
     public static final String ACTION_START_SERVICE = "com.example.spotnear.START_SERVICE";
     public static final String ACTION_STOP_SERVICE = "com.example.spotnear.STOP_SERVICE";
     public static final String ACTION_UPDATE_LOCATION = "com.example.spotnear.UPDATE_LOCATION";
-    public static final String ACTION_NOTIFICATION_CLICKED = "com.example.spotnear.NOTIFICATION_CLICKED";
-    private static final String TAG = "SpotNearService";
 
-    private static final int POI_SEARCH_RADIUS_METERS = 1000; // 1 kilometer
+    private static final int FOREGROUND_SERVICE_ID = 1000;
+    private static final int SEARCH_NOTIFICATION_ID = 1001;
+    private static final int PLACE_NOTIFICATION_ID = 1002;
 
     private NotificationManager notificationManager;
     private OkHttpClient client;
@@ -63,65 +62,46 @@ public class SpotNearService extends Service {
     private PowerManager.WakeLock wakeLock;
 
     private boolean isSearching = true;
-    private JSONObject lastFoundPlace = null;
+    private boolean hasFoundPlace = false;
 
     // Test mode flag and interval
     private static final boolean TEST_MODE = true;
-    private static final long TEST_INTERVAL = 10 * 1000; // 5 seconds
+    private static final long TEST_INTERVAL = 10 * 1000; // 10 seconds
     private static final long NORMAL_INTERVAL = AlarmManager.INTERVAL_HOUR; // 1 hour
 
-    private boolean hasFoundPlace = false;
-
     private PreferencesManager preferencesManager;
-
     private Handler handler = new Handler();
 
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "SpotNearService onCreate");
+        initializeComponents();
+        createNotificationChannel();
+    }
+
+    /**
+     * Initialize service components
+     */
+    private void initializeComponents() {
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SpotNear:WakeLock");
-        createNotificationChannel();
         client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .build();
-
         preferencesManager = new PreferencesManager(this);
     }
 
-    @SuppressLint("ForegroundServiceType")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "SpotNearService onStartCommand");
         if (intent != null) {
-            String action = intent.getAction();
-            if (ACTION_SEARCH_NOTIFICATION_CLICKED.equals(action)) {
-                handleSearchNotificationClick();
-            } else if (ACTION_PLACE_NOTIFICATION_CLICKED.equals(action)) {
-                handlePlaceNotificationClick();
-            } else if (ACTION_START_SERVICE.equals(action)) {
-                startForeground(FOREGROUND_SERVICE_ID, createSearchNotification());
-                isSearching = true;
-                // Immediately request a location update to start searching
-                requestLocationUpdate();
-            } else if (ACTION_STOP_SERVICE.equals(action)) {
-                Log.d(TAG, "Received stop service command");
-                stopForeground(true);
-                stopSelf();
-                return START_NOT_STICKY;
-            } else if (ACTION_UPDATE_LOCATION.equals(action)) {
-                if (isSearching) {
-                    requestLocationUpdate();
-                } else {
-                    scheduleAlarm();
-                }
-            }
+            handleIntent(intent);
         } else {
             // Service was restarted by the system
             startForeground(FOREGROUND_SERVICE_ID, createSearchNotification());
@@ -129,6 +109,34 @@ public class SpotNearService extends Service {
             requestLocationUpdate();
         }
         return START_STICKY;
+    }
+
+    /**
+     * Handle incoming intents
+     *
+     * @param intent The intent to handle
+     */
+    private void handleIntent(Intent intent) {
+        String action = intent.getAction();
+        if (ACTION_SEARCH_NOTIFICATION_CLICKED.equals(action)) {
+            handleSearchNotificationClick();
+        } else if (ACTION_PLACE_NOTIFICATION_CLICKED.equals(action)) {
+            handlePlaceNotificationClick();
+        } else if (ACTION_START_SERVICE.equals(action)) {
+            startForeground(FOREGROUND_SERVICE_ID, createSearchNotification());
+            isSearching = true;
+            requestLocationUpdate();
+        } else if (ACTION_STOP_SERVICE.equals(action)) {
+            Log.d(TAG, "Received stop service command");
+            stopForeground(true);
+            stopSelf();
+        } else if (ACTION_UPDATE_LOCATION.equals(action)) {
+            if (isSearching) {
+                requestLocationUpdate();
+            } else {
+                scheduleAlarm();
+            }
+        }
     }
 
     private Notification createSearchNotification() {
@@ -217,12 +225,7 @@ public class SpotNearService extends Service {
         intent.setAction(ACTION_UPDATE_LOCATION);
         alarmPendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        long interval;
-        if (TEST_MODE) {
-            interval = TEST_INTERVAL;
-        } else {
-            interval = hasFoundPlace ? NORMAL_INTERVAL : (5 * 60 * 1000); // 5 minutes if no place found, 1 hour otherwise
-        }
+        long interval = TEST_MODE ? TEST_INTERVAL : (hasFoundPlace ? NORMAL_INTERVAL : (5 * 60 * 1000)); // 5 minutes if no place found, 1 hour otherwise
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + interval, alarmPendingIntent);
@@ -232,13 +235,22 @@ public class SpotNearService extends Service {
         Log.d(TAG, "Scheduled next update in " + (interval / 1000) + " seconds");
     }
 
-    @SuppressLint("MissingPermission")
     private void requestLocationUpdate() {
         wakeLock.acquire(10 * 60 * 1000L /*10 minutes*/);
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
         fusedLocationClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
-                .addOnSuccessListener(new OnSuccessListener<Location>() {
+                .addOnSuccessListener(new OnSuccessListener<android.location.Location>() {
                     @Override
-                    public void onSuccess(Location location) {
+                    public void onSuccess(android.location.Location location) {
                         if (location != null) {
                             Log.d(TAG, "Location update: " + location.getLatitude() + ", " + location.getLongitude());
                             findNearbyPOI(location.getLatitude(), location.getLongitude());
@@ -251,20 +263,16 @@ public class SpotNearService extends Service {
                 });
     }
 
+    /**
+     * Find nearby Points of Interest
+     *
+     * @param latitude  The current latitude
+     * @param longitude The current longitude
+     */
     private void findNearbyPOI(double latitude, double longitude) {
         int searchRadius = preferencesManager.getPoiSearchRadius();
         Log.d(TAG, "Finding nearby POI for Lat " + latitude + ", Lon " + longitude);
-        String query = "[out:json];(" +
-                "node[\"leisure\"=\"park\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
-                "node[\"amenity\"=\"cafe\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
-                "node[\"amenity\"=\"restaurant\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
-                "node[\"tourism\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
-                "way[\"leisure\"=\"park\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
-                "way[\"amenity\"=\"cafe\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
-                "way[\"amenity\"=\"restaurant\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
-                "way[\"tourism\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
-                ");out center;";
-
+        String query = constructOverpassQuery(latitude, longitude, searchRadius);
         String url = "https://overpass-api.de/api/interpreter?data=" + URLEncoder.encode(query);
 
         Request request = new Request.Builder()
@@ -290,6 +298,27 @@ public class SpotNearService extends Service {
         });
     }
 
+    /**
+     * Construct the Overpass API query
+     */
+    private String constructOverpassQuery(double latitude, double longitude, int radius) {
+        return "[out:json];(" +
+                "node[\"leisure\"=\"park\"](around:" + radius + "," + latitude + "," + longitude + ");" +
+                "node[\"amenity\"=\"cafe\"](around:" + radius + "," + latitude + "," + longitude + ");" +
+                "node[\"amenity\"=\"restaurant\"](around:" + radius + "," + latitude + "," + longitude + ");" +
+                "node[\"tourism\"](around:" + radius + "," + latitude + "," + longitude + ");" +
+                "way[\"leisure\"=\"park\"](around:" + radius + "," + latitude + "," + longitude + ");" +
+                "way[\"amenity\"=\"cafe\"](around:" + radius + "," + latitude + "," + longitude + ");" +
+                "way[\"amenity\"=\"restaurant\"](around:" + radius + "," + latitude + "," + longitude + ");" +
+                "way[\"tourism\"](around:" + radius + "," + latitude + "," + longitude + ");" +
+                ");out center;";
+    }
+
+    /**
+     * Parse the response from Overpass API and notify if a place is found
+     *
+     * @param jsonData The JSON data returned from the Overpass API
+     */
     private void parseAndNotify(String jsonData) {
         try {
             JSONObject json = new JSONObject(jsonData);
@@ -300,19 +329,12 @@ public class SpotNearService extends Service {
 
                 Log.d(TAG, "POI data: " + poi.toString());
 
-                String name = poi.has("tags") ? poi.getJSONObject("tags").optString("name", "Interesting place") : "Interesting place";
-                String type = getPoiType(poi);
-                String location = poi.has("lat") && poi.has("lon") ? poi.getDouble("lat") + ", " + poi.getDouble("lon") : "Unknown location";
-
-                Log.d(TAG, "Selected POI: " + name + " (" + type + "), " + location);
-
                 preferencesManager.savePlaceDetails(poi);
                 showPlaceFoundNotification();
                 hasFoundPlace = true;
 
                 isSearching = false;
                 updateSearchNotification();
-                // Schedule the next automatic search
                 scheduleNextAutomaticSearch();
             } else {
                 Log.d(TAG, "No POIs found in the area");
@@ -324,33 +346,13 @@ public class SpotNearService extends Service {
         }
     }
 
-    private void handleNotificationClick() {
-        Log.d(TAG, "Notification clicked");
-
-        // Start MainActivity
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        intent.setAction(ACTION_NOTIFICATION_CLICKED);
-        startActivity(intent);
-
-        // Cancel the notification to remove it from the tray
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.cancel(FOREGROUND_SERVICE_ID);
-
-        // Reset the search state
-        isSearching = true;
-        // preferencesManager.clearPlaceDetails();
-
-        // Update notification to show we're searching again
-        updateForegroundNotification();
-
-        // Immediately request a location update to start searching
-        requestLocationUpdate();
-    }
-
-    private void updateForegroundNotification() {
-        Notification notification = createSearchNotification();
-        notificationManager.notify(FOREGROUND_SERVICE_ID, notification);
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "SpotNear Notifications", NotificationManager.IMPORTANCE_LOW);
+            channel.setShowBadge(false);
+            channel.setSound(null, null);
+            notificationManager.createNotificationChannel(channel);
+        }
     }
 
     private void updateSearchNotification() {
@@ -361,31 +363,6 @@ public class SpotNearService extends Service {
     private void showPlaceFoundNotification() {
         Notification notification = createPlaceFoundNotification();
         notificationManager.notify(PLACE_NOTIFICATION_ID, notification);
-    }
-
-    private String getPoiType(JSONObject poi) {
-        try {
-            JSONObject tags = poi.getJSONObject("tags");
-            if (tags.has("leisure") && "park".equals(tags.getString("leisure"))) {
-                return "park";
-            } else if (tags.has("amenity")) {
-                return tags.getString("amenity");
-            } else if (tags.has("tourism")) {
-                return tags.getString("tourism");
-            }
-        } catch (JSONException e) {
-            Log.e(TAG, "Error getting POI type", e);
-        }
-        return "interesting place";
-    }
-
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "SpotNear Notifications", NotificationManager.IMPORTANCE_LOW);
-            channel.setShowBadge(false);
-            channel.setSound(null, null);
-            notificationManager.createNotificationChannel(channel);
-        }
     }
 
     @Override
