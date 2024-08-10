@@ -24,10 +24,15 @@ This video showcases the standard behavior and functionality of the SpotNear app
 2. Starting the service
 3. Receiving and interacting with POI notifications
 4. Background operation and service persistence
+5. Showing last save POI
 
 
 
-https://github.com/user-attachments/assets/e84c4d05-856e-45f2-97d8-feaa1f3ded81
+
+
+https://github.com/user-attachments/assets/4812249c-6aac-4ade-853e-14854c83622f
+
+
 
 
 
@@ -40,7 +45,11 @@ This video demonstrates the functionality of the service when it automatically n
 
 
 
-https://github.com/user-attachments/assets/13de9c19-37cb-4782-add6-4039d861d301
+
+https://github.com/user-attachments/assets/494f02c1-3f45-4d17-a263-eee55ad103f0
+
+
+
 
 
 
