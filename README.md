@@ -18,8 +18,6 @@ user when it finds something interesting.
 
 ## Video Demonstrations 🎥
 
-### Non-Test Mode Demo
-
 This video showcases the app's functionality in non-test mode:
 
 1. App launch and permission granting
@@ -27,9 +25,11 @@ This video showcases the app's functionality in non-test mode:
 3. Receiving and interacting with POI notifications
 4. Background operation and service persistence
 
-[Insert Non-Test Mode Video Here]
 
-### Test Mode Demo
+
+https://github.com/user-attachments/assets/e84c4d05-856e-45f2-97d8-feaa1f3ded81
+
+
 
 This video demonstrates the app's behavior, which is applicable to both test and non-test modes. For the purpose of this demonstration, test mode is used to showcase features more rapidly:
 
@@ -38,7 +38,11 @@ This video demonstrates the app's behavior, which is applicable to both test and
 3. Notification interaction and map zooming
 4. Continuous POI updates
 
-[Insert Test Mode Video Here]
+
+
+https://github.com/user-attachments/assets/13de9c19-37cb-4782-add6-4039d861d301
+
+
 
 ## Components 🧩
 
