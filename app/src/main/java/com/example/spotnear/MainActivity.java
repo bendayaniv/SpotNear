@@ -14,6 +14,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -21,6 +22,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.example.locationlibrary.MyLocation;
+import com.google.android.material.textfield.TextInputEditText;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -35,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView locationText;
     private TextView placeDetailsText;
     private MyLocation myLocation;
+    private TextInputEditText searchRadiusInput;
     private Button startServiceButton;
     private Button stopServiceButton;
     private boolean isServiceRunning = false;
@@ -50,6 +53,8 @@ public class MainActivity extends AppCompatActivity {
 
         //Set direction on all devices from LEFT to RIGHT
         getWindow().getDecorView().setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+
+        preferencesManager = new PreferencesManager(this);
 
         locationText = findViewById(R.id.locationText);
         placeDetailsText = findViewById(R.id.placeDetailsText);
@@ -71,7 +76,12 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        preferencesManager = new PreferencesManager(this);
+        searchRadiusInput = findViewById(R.id.searchRadiusInput);
+
+        // Set the initial value from preferences
+        searchRadiusInput.setText(String.valueOf(preferencesManager.getPoiSearchRadius()));
+
+        startServiceButton.setOnClickListener(v -> checkRadiusAndStartService());
 
         mapFragment = new MapFragment();
 
@@ -87,8 +97,18 @@ public class MainActivity extends AppCompatActivity {
             startSpotNearService();
         }
 
+        // Check for existing place details and display them if available
+        checkAndDisplayExistingPlaceDetails();
+
         // Handle intent if the activity was started from a notification
         handleIntent(getIntent());
+    }
+
+    private void checkAndDisplayExistingPlaceDetails() {
+        JSONObject existingPlaceDetails = preferencesManager.getPlaceDetails();
+        if (existingPlaceDetails != null) {
+            displayPlaceDetails();
+        }
     }
 
     @Override
@@ -185,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
         startService(intent);
         isServiceRunning = false;
         preferencesManager.setServiceRunningState(false);
-        preferencesManager.clearPlaceDetails();
+//        preferencesManager.clearPlaceDetails();
         updateButtonStates();
         Log.d(TAG, "SpotNear service stopped");
     }
@@ -249,6 +269,18 @@ public class MainActivity extends AppCompatActivity {
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.ACCESS_COARSE_LOCATION
             };
+        }
+    }
+
+    private void checkRadiusAndStartService() {
+        String radiusStr = searchRadiusInput.getText().toString();
+        if (!radiusStr.isEmpty()) {
+            int radius = Integer.parseInt(radiusStr);
+            preferencesManager.setPoiSearchRadius(radius);
+            checkPermissionsAndStartService();
+        } else {
+            // Show an error message to the user
+            Toast.makeText(this, "Please enter a search radius", Toast.LENGTH_SHORT).show();
         }
     }
 

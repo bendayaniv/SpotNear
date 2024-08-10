@@ -11,6 +11,9 @@ public class PreferencesManager {
     private static final String PREF_PLACE_DETAILS = "placeDetails";
     private static final String PREF_SERVICE_RUNNING = "isServiceRunning";
 
+    private static final String PREF_POI_SEARCH_RADIUS = "poiSearchRadius";
+    private static final int DEFAULT_SEARCH_RADIUS = 1000; // 1 km default
+
     private final SharedPreferences prefs;
 
     public PreferencesManager(Context context) {
@@ -43,5 +46,13 @@ public class PreferencesManager {
 
     public void clearPlaceDetails() {
         prefs.edit().remove(PREF_PLACE_DETAILS).apply();
+    }
+
+    public void setPoiSearchRadius(int radius) {
+        prefs.edit().putInt(PREF_POI_SEARCH_RADIUS, radius).apply();
+    }
+
+    public int getPoiSearchRadius() {
+        return prefs.getInt(PREF_POI_SEARCH_RADIUS, DEFAULT_SEARCH_RADIUS);
     }
 }

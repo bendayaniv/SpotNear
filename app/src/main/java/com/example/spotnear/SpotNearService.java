@@ -252,16 +252,17 @@ public class SpotNearService extends Service {
     }
 
     private void findNearbyPOI(double latitude, double longitude) {
+        int searchRadius = preferencesManager.getPoiSearchRadius();
         Log.d(TAG, "Finding nearby POI for Lat " + latitude + ", Lon " + longitude);
         String query = "[out:json];(" +
-                "node[\"leisure\"=\"park\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
-                "node[\"amenity\"=\"cafe\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
-                "node[\"amenity\"=\"restaurant\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
-                "node[\"tourism\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
-                "way[\"leisure\"=\"park\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
-                "way[\"amenity\"=\"cafe\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
-                "way[\"amenity\"=\"restaurant\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
-                "way[\"tourism\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
+                "node[\"leisure\"=\"park\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
+                "node[\"amenity\"=\"cafe\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
+                "node[\"amenity\"=\"restaurant\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
+                "node[\"tourism\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
+                "way[\"leisure\"=\"park\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
+                "way[\"amenity\"=\"cafe\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
+                "way[\"amenity\"=\"restaurant\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
+                "way[\"tourism\"](around:" + searchRadius + "," + latitude + "," + longitude + ");" +
                 ");out center;";
 
         String url = "https://overpass-api.de/api/interpreter?data=" + URLEncoder.encode(query);
