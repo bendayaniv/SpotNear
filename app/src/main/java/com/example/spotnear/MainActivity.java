@@ -80,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
             startSpotNearService();
         }
 
-        // Handle place details if sent from notification click
+        // Handle intent if the activity was started from a notification
         handleIntent(getIntent());
     }
 
@@ -108,9 +108,23 @@ public class MainActivity extends AppCompatActivity {
 //    }
 
     private void handleIntent(Intent intent) {
-        if (intent != null && SpotNearService.ACTION_NOTIFICATION_CLICKED.equals(intent.getAction())) {
-            Log.d(TAG, "Notification clicked intent received");
-            displayPlaceDetails();
+        if (intent != null) {
+            String action = intent.getAction();
+            Log.d(TAG, "Handling intent with action: " + action);
+            if (SpotNearService.ACTION_PLACE_NOTIFICATION_CLICKED.equals(action)) {
+                Log.d(TAG, "Place notification clicked intent received");
+                displayPlaceDetails();
+            } else if (SpotNearService.ACTION_SEARCH_NOTIFICATION_CLICKED.equals(action)) {
+                Log.d(TAG, "Search notification clicked intent received");
+                // Ensure the service is running and searching
+                if (!isServiceRunning(SpotNearService.class)) {
+                    startSpotNearService();
+                } else {
+                    // If the service is already running, send a broadcast to trigger a new search
+                    Intent searchIntent = new Intent(SpotNearService.ACTION_SEARCH_NOTIFICATION_CLICKED);
+                    sendBroadcast(searchIntent);
+                }
+            }
         }
     }
 

@@ -39,7 +39,13 @@ public class SpotNearService extends Service {
 
     private static final String CHANNEL_ID = "SpotNearChannel";
     private static final int NOTIFICATION_ID = 1;
-    private static final int FOREGROUND_SERVICE_ID = 1001;
+    public static final String ACTION_SEARCH_NOTIFICATION_CLICKED = "com.example.spotnear.SEARCH_NOTIFICATION_CLICKED";
+    public static final String ACTION_PLACE_NOTIFICATION_CLICKED = "com.example.spotnear.PLACE_NOTIFICATION_CLICKED";
+
+    private static final int FOREGROUND_SERVICE_ID = 1000;
+
+    private static final int SEARCH_NOTIFICATION_ID = 1001;
+    private static final int PLACE_NOTIFICATION_ID = 1002;
     public static final String ACTION_START_SERVICE = "com.example.spotnear.START_SERVICE";
     public static final String ACTION_STOP_SERVICE = "com.example.spotnear.STOP_SERVICE";
     public static final String ACTION_UPDATE_LOCATION = "com.example.spotnear.UPDATE_LOCATION";
@@ -59,6 +65,9 @@ public class SpotNearService extends Service {
     // Test mode flag and interval
     private static final boolean TEST_MODE = true;
     private static final long TEST_INTERVAL = 5 * 1000; // 5 seconds
+    private static final long NORMAL_INTERVAL = AlarmManager.INTERVAL_HOUR; // 1 hour
+
+    private boolean hasFoundPlace = false;
 
     private PreferencesManager preferencesManager;
 
@@ -87,11 +96,16 @@ public class SpotNearService extends Service {
         Log.d(TAG, "SpotNearService onStartCommand");
         if (intent != null) {
             String action = intent.getAction();
-            if (ACTION_NOTIFICATION_CLICKED.equals(action)) {
-                handleNotificationClick(); // This will now also cancel the notification
+            if (ACTION_SEARCH_NOTIFICATION_CLICKED.equals(action)) {
+                handleSearchNotificationClick();
+            } else if (ACTION_PLACE_NOTIFICATION_CLICKED.equals(action)) {
+                handlePlaceNotificationClick();
             } else if (ACTION_START_SERVICE.equals(action)) {
-                startForeground(FOREGROUND_SERVICE_ID, createForegroundNotification());
+                startForeground(FOREGROUND_SERVICE_ID, createSearchNotification());
                 isSearching = true;
+                if (!TEST_MODE) {
+                    showInitialNotification();
+                }
                 scheduleAlarm();
             } else if (ACTION_STOP_SERVICE.equals(action)) {
                 Log.d(TAG, "Received stop service command");
@@ -105,21 +119,18 @@ public class SpotNearService extends Service {
                     scheduleAlarm();
                 }
             }
-//            else if (ACTION_NOTIFICATION_CLICKED.equals(action)) {
-//                handleNotificationClick();
-//            }
         } else {
             // Service was restarted by the system
-            startForeground(FOREGROUND_SERVICE_ID, createForegroundNotification());
+            startForeground(FOREGROUND_SERVICE_ID, createSearchNotification());
             isSearching = true;
             scheduleAlarm();
         }
         return START_STICKY;
     }
 
-    private Notification createForegroundNotification() {
+    private Notification createSearchNotification() {
         Intent notificationIntent = new Intent(this, SpotNearService.class);
-        notificationIntent.setAction(ACTION_NOTIFICATION_CLICKED);
+        notificationIntent.setAction(ACTION_SEARCH_NOTIFICATION_CLICKED);
         PendingIntent pendingIntent = PendingIntent.getService(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         String contentText = isSearching ? "Discovering interesting places nearby" : "Click to search for new places";
@@ -129,12 +140,13 @@ public class SpotNearService extends Service {
                 .setContentText(contentText)
                 .setSmallIcon(R.drawable.notification)
                 .setContentIntent(pendingIntent)
+                .setOngoing(true)
                 .build();
     }
 
     private Notification createPlaceFoundNotification() {
         Intent notificationIntent = new Intent(this, MainActivity.class);
-        notificationIntent.setAction(ACTION_NOTIFICATION_CLICKED);
+        notificationIntent.setAction(ACTION_PLACE_NOTIFICATION_CLICKED);
         notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
@@ -143,7 +155,36 @@ public class SpotNearService extends Service {
                 .setContentText("We found something near you!")
                 .setSmallIcon(R.drawable.notification)
                 .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
                 .build();
+    }
+
+    private void showInitialNotification() {
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("SpotNear Started")
+                .setContentText("We've started looking for interesting places nearby")
+                .setSmallIcon(R.drawable.notification)
+                .setAutoCancel(true)
+                .build();
+        notificationManager.notify(SEARCH_NOTIFICATION_ID, notification);
+    }
+
+    private void handleSearchNotificationClick() {
+        Log.d(TAG, "Search notification clicked");
+        isSearching = true;
+        hasFoundPlace = false;  // Reset this flag to allow finding a new place
+        updateSearchNotification();
+        requestLocationUpdate();
+    }
+
+    private void handlePlaceNotificationClick() {
+        Log.d(TAG, "Place notification clicked");
+        notificationManager.cancel(PLACE_NOTIFICATION_ID);
+        if (!TEST_MODE) {
+            // In non-test mode, clicking the place notification stops the service from searching
+            isSearching = false;
+            updateSearchNotification();
+        }
     }
 
     @SuppressLint("ScheduleExactAlarm")
@@ -154,9 +195,9 @@ public class SpotNearService extends Service {
 
         long interval;
         if (TEST_MODE) {
-            interval = isSearching ? 5 * 1000 : TEST_INTERVAL; // 5 seconds when searching, TEST_INTERVAL otherwise
+            interval = TEST_INTERVAL;
         } else {
-            interval = isSearching ? 5 * 60 * 1000 : AlarmManager.INTERVAL_HOUR; // 5 minutes when searching, 1 hour otherwise
+            interval = hasFoundPlace ? NORMAL_INTERVAL : (5 * 60 * 1000); // 5 minutes if no place found, 1 hour otherwise
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -239,16 +280,21 @@ public class SpotNearService extends Service {
                 String location = poi.has("lat") && poi.has("lon") ? poi.getDouble("lat") + ", " + poi.getDouble("lon") : "Unknown location";
 
                 Log.d(TAG, "Selected POI: " + name + " (" + type + "), " + location);
-                preferencesManager.savePlaceDetails(poi);
+
+                if (TEST_MODE || !hasFoundPlace) {
+                    preferencesManager.savePlaceDetails(poi);
+                    showPlaceFoundNotification();
+                    hasFoundPlace = true;
+                }
+
                 isSearching = false;
-                showPlaceFoundNotification();
-                updateForegroundNotification();
+                updateSearchNotification();
             } else {
                 Log.d(TAG, "No POIs found in the area");
-                scheduleAlarm();
             }
         } catch (JSONException e) {
             Log.e(TAG, "Error parsing POI data", e);
+        } finally {
             scheduleAlarm();
         }
     }
@@ -278,13 +324,18 @@ public class SpotNearService extends Service {
     }
 
     private void updateForegroundNotification() {
-        Notification notification = createForegroundNotification();
+        Notification notification = createSearchNotification();
+        notificationManager.notify(FOREGROUND_SERVICE_ID, notification);
+    }
+
+    private void updateSearchNotification() {
+        Notification notification = createSearchNotification();
         notificationManager.notify(FOREGROUND_SERVICE_ID, notification);
     }
 
     private void showPlaceFoundNotification() {
         Notification notification = createPlaceFoundNotification();
-        notificationManager.notify(NOTIFICATION_ID, notification);
+        notificationManager.notify(PLACE_NOTIFICATION_ID, notification);
     }
 
     private String getPoiType(JSONObject poi) {
