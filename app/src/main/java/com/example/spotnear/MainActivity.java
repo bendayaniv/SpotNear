@@ -1,10 +1,12 @@
 package com.example.spotnear;
 
+import android.Manifest;
 import android.app.ActivityManager;
 import android.app.AlarmManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -14,6 +16,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.example.locationlibrary.MyLocation;
@@ -26,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final String PREFS_NAME = "SpotNearPrefs";
     private static final String PREF_SERVICE_RUNNING = "isServiceRunning";
+    private static final int PERMISSION_REQUEST_CODE = 1001;
 
     private TextView locationText;
     private TextView placeDetailsText;
@@ -51,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
         myLocation = MyLocation.getInstance();
         myLocation.initializeApp(getApplication(), true);
 
-        startServiceButton.setOnClickListener(v -> requestLocationUpdate());
+        startServiceButton.setOnClickListener(v -> checkPermissionsAndStartService());
         stopServiceButton.setOnClickListener(v -> stopSpotNearService());
 
         // Check for SCHEDULE_EXACT_ALARM permission
@@ -62,7 +66,6 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         }
-
 
         preferencesManager = new PreferencesManager(this);
 
@@ -90,22 +93,6 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "onNewIntent called");
         handleIntent(intent);
     }
-
-//    private void handlePlaceDetails(Intent intent) {
-//        Log.d(TAG, "handlePlaceDetails called");
-//        if (intent != null && intent.hasExtra("placeDetails")) {
-//            Log.d(TAG, "Received place details from notification");
-//            String placeDetailsJson = intent.getStringExtra("placeDetails");
-//            try {
-//                JSONObject placeDetails = new JSONObject(placeDetailsJson);
-//                displayPlaceDetails(placeDetails);
-//            } catch (JSONException e) {
-//                Log.e(TAG, "Error parsing place details", e);
-//            }
-//        } else {
-//            Log.d(TAG, "No place details in intent");
-//        }
-//    }
 
     private void handleIntent(Intent intent) {
         if (intent != null) {
@@ -200,17 +187,6 @@ public class MainActivity extends AppCompatActivity {
         stopServiceButton.setEnabled(isServiceRunning);
     }
 
-    private void requestLocationUpdate() {
-        Log.d(TAG, "Requesting location update");
-        myLocation.checkLocationAndRequestUpdates(this, (latitude, longitude) -> {
-            String locationStr = "Lat: " + latitude + ", Lon: " + longitude;
-            locationText.setText(locationStr);
-            Log.d(TAG, "Location updated: " + locationStr);
-
-            startSpotNearService();
-        });
-    }
-
     private boolean isServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
@@ -232,10 +208,73 @@ public class MainActivity extends AppCompatActivity {
         editor.apply();
     }
 
+    private void checkPermissionsAndStartService() {
+        if (checkPermissions()) {
+            requestLocationUpdate();
+        } else {
+            requestPermissions();
+        }
+    }
+
+    private boolean checkPermissions() {
+        for (String permission : getRequiredPermissions()) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void requestPermissions() {
+        ActivityCompat.requestPermissions(this, getRequiredPermissions(), PERMISSION_REQUEST_CODE);
+    }
+
+    private String[] getRequiredPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return new String[]{
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.POST_NOTIFICATIONS
+            };
+        } else {
+            return new String[]{
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+            };
+        }
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            boolean allGranted = true;
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+            if (allGranted) {
+                requestLocationUpdate();
+            } else {
+                // Handle the case where permissions are not granted
+                Log.d(TAG, "Some permissions were not granted");
+                // You might want to show a dialog explaining why permissions are needed
+            }
+        }
         myLocation.onRequestPermissionsResult(this, requestCode, permissions, grantResults);
+    }
+
+    private void requestLocationUpdate() {
+        Log.d(TAG, "Requesting location update");
+        myLocation.checkLocationAndRequestUpdates(this, (latitude, longitude) -> {
+            String locationStr = "Lat: " + latitude + ", Lon: " + longitude;
+            locationText.setText(locationStr);
+            Log.d(TAG, "Location updated: " + locationStr);
+
+            startSpotNearService();
+        });
     }
 
     @Override
