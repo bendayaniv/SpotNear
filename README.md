@@ -2,7 +2,9 @@
 
 # SpotNear 🗺️🔍
 
-SpotNear is an Android application that discovers interesting places near the user's location. It runs as a background service, periodically checking for points of interest (POIs) and notifying the user when it finds something interesting.
+SpotNear is an Android application that discovers interesting places near the user's location. It
+runs as a background service, periodically checking for points of interest (POIs) and notifying the
+user when it finds something interesting.
 
 ## Features 🌟
 
@@ -14,11 +16,36 @@ SpotNear is an Android application that discovers interesting places near the us
 - 💾 Persistence of discovered place details
 - 🧪 Test mode for development and debugging
 
+## Video Demonstrations 🎥
+
+### Non-Test Mode Demo
+
+This video showcases the app's functionality in non-test mode:
+
+1. App launch and permission granting
+2. Starting the service
+3. Receiving and interacting with POI notifications
+4. Background operation and service persistence
+
+[Insert Non-Test Mode Video Here]
+
+### Test Mode Demo
+
+This video demonstrates the app's behavior, which is applicable to both test and non-test modes. For the purpose of this demonstration, test mode is used to showcase features more rapidly:
+
+1. App launch and service start
+2. Rapid POI discovery (every 5 seconds in test mode, 1 hour in non-test mode)
+3. Notification interaction and map zooming
+4. Continuous POI updates
+
+[Insert Test Mode Video Here]
+
 ## Components 🧩
 
 ### MainActivity
 
 The main entry point of the application. It handles:
+
 - 🚀 Starting and stopping the SpotNear service
 - 📍 Displaying current location and place details
 - 🔐 Managing permissions
@@ -27,6 +54,7 @@ The main entry point of the application. It handles:
 ### SpotNearService
 
 A background service that:
+
 - 📡 Periodically requests location updates
 - 🔎 Searches for nearby POIs using the Overpass API
 - 🔔 Sends notifications when interesting places are found
@@ -36,22 +64,26 @@ A background service that:
 ### MapFragment
 
 A fragment that displays a Google Map with:
+
 - 🔍 The ability to zoom to specific coordinates
 - 📌 Markers for discovered POIs
 
 ### PreferencesManager
 
 A utility class for managing shared preferences, including:
+
 - 💾 Saving and retrieving place details
 - 🔄 Managing the service running state
 
 ### SpotNearServiceRestarter
 
-A BroadcastReceiver that restarts the SpotNearService when the device reboots or the application is updated.
+A BroadcastReceiver that restarts the SpotNearService when the device reboots or the application is
+updated.
 
 ## Dependencies 🛠️
 
-- [LocationLibrary](https://github.com/bendayaniv/LocationLibrary) - A custom library for handling location-related functionalities
+- [LocationLibrary](https://github.com/bendayaniv/LocationLibrary) - A custom library for handling
+  location-related functionalities
 - Google Maps Android SDK
 - OkHttp for network requests
 
@@ -69,7 +101,8 @@ A BroadcastReceiver that restarts the SpotNearService when the device reboots or
 3. The app will notify you when it finds an interesting place
 4. Click on the notification to view details about the discovered place
 5. Use the "Stop Service" button to stop the background discovery process
-6. At any time, click on the "SpotNear is running" notification to immediately search for new POIs without waiting for the next scheduled search
+6. At any time, click on the "SpotNear is running" notification to immediately search for new POIs
+   without waiting for the next scheduled search
 
 ## Test Mode vs Non-Test Mode 🧪
 
@@ -89,16 +122,20 @@ SpotNear supports two operational modes:
 - Designed for regular user experience
 - Conserves battery and system resources
 
-To switch between modes, modify the `TEST_MODE` constant in the `SpotNearService` class and rebuild the application.
+To switch between modes, modify the `TEST_MODE` constant in the `SpotNearService` class and rebuild
+the application.
 
 ## On-Demand POI Search 🔍
 
-While the service is running, a persistent notification with the title "SpotNear is running" is displayed. This notification serves two purposes:
+While the service is running, a persistent notification with the title "SpotNear is running" is
+displayed. This notification serves two purposes:
 
 1. It informs the user that the SpotNear service is actively running in the background.
 2. It provides a quick way to trigger an immediate POI search.
 
-By clicking on this notification, the user can initiate an immediate search for new POIs without waiting for the next scheduled search. This feature is particularly useful when the user changes location and wants to discover new places right away.
+By clicking on this notification, the user can initiate an immediate search for new POIs without
+waiting for the next scheduled search. This feature is particularly useful when the user changes
+location and wants to discover new places right away.
 
 ## Acknowledgements 🙏
 
