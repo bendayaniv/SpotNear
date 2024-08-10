@@ -1,6 +1,6 @@
 # SpotNear 🗺️🔍
 
-![spotnear-icon](https://github.com/user-attachments/assets/c21cba80-e742-4b52-9711-0dddbfefbc37)
+<img src="https://github.com/user-attachments/assets/c21cba80-e742-4b52-9711-0dddbfefbc37" alt="spotnear-icon" width="100" height="100">
 
 SpotNear is an Android application that discovers interesting places near the user's location. It runs as a background service, periodically checking for points of interest (POIs) and notifying the user when it finds something interesting.
 
