@@ -139,7 +139,7 @@ public class SpotNearService extends Service {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("SpotNear is running")
                 .setContentText(contentText)
-                .setSmallIcon(R.drawable.notification)
+                .setSmallIcon(R.drawable.ic_launcher)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -161,7 +161,7 @@ public class SpotNearService extends Service {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("SpotNear found a place!")
                 .setContentText("We found something near you!")
-                .setSmallIcon(R.drawable.notification)
+                .setSmallIcon(R.drawable.ic_launcher)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .build();
@@ -171,7 +171,7 @@ public class SpotNearService extends Service {
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("SpotNear Started")
                 .setContentText("We've started looking for interesting places nearby")
-                .setSmallIcon(R.drawable.notification)
+                .setSmallIcon(R.drawable.ic_launcher)
                 .setAutoCancel(true)
                 .build();
         notificationManager.notify(SEARCH_NOTIFICATION_ID, notification);
