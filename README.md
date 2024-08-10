@@ -2,7 +2,9 @@
 
 # SpotNear 🗺️🔍
 
-SpotNear is an Android application that discovers interesting places near the user's location. It runs as a background service, periodically checking for points of interest (POIs) and notifying the user when it finds something interesting.
+SpotNear is an Android application that discovers interesting places near the user's location. It
+runs as a background service, periodically checking for points of interest (POIs) and notifying the
+user when it finds something interesting.
 
 ## Features 🌟
 
@@ -15,6 +17,7 @@ SpotNear is an Android application that discovers interesting places near the us
 - 🧪 Test mode for development and debugging
 - 📏 User-defined search radius for POIs
 - 🔄 Automatic display of the last discovered POI on app start
+- 🧭 In-app navigation to discovered POIs via Google Maps
 
 ## Video Demonstrations 🎥
 
@@ -26,32 +29,17 @@ This video showcases the standard behavior and functionality of the SpotNear app
 4. Background operation and service persistence
 5. Showing last save POI
 
-
-
-
-
 https://github.com/user-attachments/assets/4812249c-6aac-4ade-853e-14854c83622f
 
-
-
-
-
-This video demonstrates the functionality of the service when it automatically notifies about a nearby POI. It's shown in test mode to highlight the feature without long waiting times:
+This video demonstrates the functionality of the service when it automatically notifies about a
+nearby POI. It's shown in test mode to highlight the feature without long waiting times:
 
 1. App launch and service start
 2. Rapid POI discovery (every 5 seconds in test mode, 1 hour in non-test mode)
 3. Notification interaction and map zooming
 4. Continuous POI updates
 
-
-
-
 https://github.com/user-attachments/assets/494f02c1-3f45-4d17-a263-eee55ad103f0
-
-
-
-
-
 
 ## Components 🧩
 
@@ -80,6 +68,7 @@ A fragment that displays a Google Map with:
 
 - 🔍 The ability to zoom to specific coordinates
 - 📌 Markers for discovered POIs
+- 🧭 Click-to-navigate functionality for POI markers
 
 ### PreferencesManager
 
@@ -114,9 +103,11 @@ updated.
 3. Click the "Start Service" button to begin discovering nearby places
 4. The app will notify you when it finds an interesting place
 5. Click on the notification to view details about the discovered place
-6. Use the "Stop Service" button to stop the background discovery process
-7. At any time, click on the "SpotNear is running" notification to immediately search for new POIs without waiting for the next scheduled search
-8. The last discovered POI will be automatically displayed when you reopen the app
+6. Tap on the map marker to open Google Maps for navigation to the POI
+7. Use the "Stop Service" button to stop the background discovery process
+8. At any time, click on the "SpotNear is running" notification to immediately search for new POIs
+   without waiting for the next scheduled search
+9. The last discovered POI will be automatically displayed when you reopen the app
 
 ## Customizable Search Radius 📏
 
@@ -133,7 +124,8 @@ The app now automatically displays the last discovered POI when reopened:
 - The details of the last found interesting place are saved locally
 - When the app is started, it checks for any previously discovered POI
 - If a previous POI exists, its details are displayed and the map zooms to its location
-- This feature ensures users don't lose track of interesting places they've discovered, even if they close the app
+- This feature ensures users don't lose track of interesting places they've discovered, even if they
+  close the app
 
 ## Test Mode vs Non-Test Mode 🧪
 
@@ -168,8 +160,16 @@ By clicking on this notification, the user can initiate an immediate search for 
 waiting for the next scheduled search. This feature is particularly useful when the user changes
 location and wants to discover new places right away.
 
+## In-App Navigation 🧭
+
+SpotNear now offers an easy way to navigate to discovered POIs:
+
+- When a POI is displayed on the map, it's represented by a clickable marker
+- Tapping on the marker opens Google Maps with directions to the POI
+- This feature allows users to easily navigate to interesting places they've discovered
+- It integrates seamlessly with Google Maps, providing familiar and reliable navigation
+
 ## Acknowledgements 🙏
 
 - OpenStreetMap and Overpass API for providing POI data
-- Google for the Maps SDK
-
+- Google for the Maps SDK and navigation capabilities

@@ -1,5 +1,7 @@
 package com.example.spotnear;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -16,26 +18,25 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-public class MapFragment extends Fragment implements OnMapReadyCallback {
+public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
 
     private GoogleMap mMap;
     private boolean mapReady = false;
     private LatLng initialLocation = null;
+    private Marker currentMarker;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
         return inflater.inflate(R.layout.fragment_map, container, false);
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        // Initialize the map
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map_fragment);
         if (mapFragment != null) {
@@ -44,7 +45,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     }
 
     /**
-     * Zoom to a specific location on the map
+     * Zoom to a specific location on the map and add a marker
      *
      * @param latitude  Latitude of the location
      * @param longitude Longitude of the location
@@ -59,10 +60,11 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
 
         LatLng poiLocation = new LatLng(latitude, longitude);
 
-        MarkerOptions marker = new MarkerOptions()
-                .position(poiLocation);
+        MarkerOptions markerOptions = new MarkerOptions()
+                .position(poiLocation)
+                .title("Navigate to this location");
 
-        mMap.addMarker(marker);
+        currentMarker = mMap.addMarker(markerOptions);
 
         CameraPosition cameraPosition = new CameraPosition.Builder()
                 .target(poiLocation)
@@ -78,6 +80,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     public void refreshMap() {
         if (mapReady) {
             mMap.clear();
+            currentMarker = null;
         }
     }
 
@@ -93,6 +96,8 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         } else {
             refreshMap();
         }
+
+        mMap.setOnMarkerClickListener(this);
     }
 
     /**
@@ -122,5 +127,21 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
      */
     public boolean isMapReady() {
         return mapReady;
+    }
+
+    @Override
+    public boolean onMarkerClick(Marker marker) {
+        if (marker.equals(currentMarker)) {
+            LatLng position = marker.getPosition();
+            String uri = "google.navigation:q=" + position.latitude + "," + position.longitude;
+            Intent mapIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+            mapIntent.setPackage("com.google.android.apps.maps");
+
+            if (mapIntent.resolveActivity(requireActivity().getPackageManager()) != null) {
+                startActivity(mapIntent);
+            }
+            return true;
+        }
+        return false;
     }
 }

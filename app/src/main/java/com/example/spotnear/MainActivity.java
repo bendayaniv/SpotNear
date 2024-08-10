@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.util.Log;
@@ -43,6 +44,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Always from LTR
+        getWindow().getDecorView().setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
 
         initializeViews();
         setupListeners();
