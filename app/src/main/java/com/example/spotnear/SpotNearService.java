@@ -53,6 +53,8 @@ public class SpotNearService extends Service {
     public static final String ACTION_NOTIFICATION_CLICKED = "com.example.spotnear.NOTIFICATION_CLICKED";
     private static final String TAG = "SpotNearService";
 
+    private static final int POI_SEARCH_RADIUS_METERS = 1000; // 1 kilometer
+
     private NotificationManager notificationManager;
     private OkHttpClient client;
     private AlarmManager alarmManager;
@@ -252,14 +254,14 @@ public class SpotNearService extends Service {
     private void findNearbyPOI(double latitude, double longitude) {
         Log.d(TAG, "Finding nearby POI for Lat " + latitude + ", Lon " + longitude);
         String query = "[out:json];(" +
-                "node[\"leisure\"=\"park\"](around:1000," + latitude + "," + longitude + ");" +
-                "node[\"amenity\"=\"cafe\"](around:1000," + latitude + "," + longitude + ");" +
-                "node[\"amenity\"=\"restaurant\"](around:1000," + latitude + "," + longitude + ");" +
-                "node[\"tourism\"](around:1000," + latitude + "," + longitude + ");" +
-                "way[\"leisure\"=\"park\"](around:1000," + latitude + "," + longitude + ");" +
-                "way[\"amenity\"=\"cafe\"](around:1000," + latitude + "," + longitude + ");" +
-                "way[\"amenity\"=\"restaurant\"](around:1000," + latitude + "," + longitude + ");" +
-                "way[\"tourism\"](around:1000," + latitude + "," + longitude + ");" +
+                "node[\"leisure\"=\"park\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
+                "node[\"amenity\"=\"cafe\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
+                "node[\"amenity\"=\"restaurant\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
+                "node[\"tourism\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
+                "way[\"leisure\"=\"park\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
+                "way[\"amenity\"=\"cafe\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
+                "way[\"amenity\"=\"restaurant\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
+                "way[\"tourism\"](around:" + POI_SEARCH_RADIUS_METERS + "," + latitude + "," + longitude + ");" +
                 ");out center;";
 
         String url = "https://overpass-api.de/api/interpreter?data=" + URLEncoder.encode(query);
