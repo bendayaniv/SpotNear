@@ -106,10 +106,8 @@ public class SpotNearService extends Service {
             } else if (ACTION_START_SERVICE.equals(action)) {
                 startForeground(FOREGROUND_SERVICE_ID, createSearchNotification());
                 isSearching = true;
-                if (!TEST_MODE) {
-                    showInitialNotification();
-                }
-                scheduleAlarm();
+                // Immediately request a location update to start searching
+                requestLocationUpdate();
             } else if (ACTION_STOP_SERVICE.equals(action)) {
                 Log.d(TAG, "Received stop service command");
                 stopForeground(true);
@@ -126,7 +124,7 @@ public class SpotNearService extends Service {
             // Service was restarted by the system
             startForeground(FOREGROUND_SERVICE_ID, createSearchNotification());
             isSearching = true;
-            scheduleAlarm();
+            requestLocationUpdate();
         }
         return START_STICKY;
     }
@@ -298,11 +296,9 @@ public class SpotNearService extends Service {
 
                 Log.d(TAG, "Selected POI: " + name + " (" + type + "), " + location);
 
-                if (TEST_MODE || !hasFoundPlace) {
-                    preferencesManager.savePlaceDetails(poi);
-                    showPlaceFoundNotification();
-                    hasFoundPlace = true;
-                }
+                preferencesManager.savePlaceDetails(poi);
+                showPlaceFoundNotification();
+                hasFoundPlace = true;
 
                 isSearching = false;
                 updateSearchNotification();
